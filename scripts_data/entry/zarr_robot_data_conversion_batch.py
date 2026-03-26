@@ -100,6 +100,7 @@ def conversion_single_trajectory(
         episode[f'robot{robot_id}_eef_rot_axis_angle'] = gripper_to_cam[:, 3:]
 
         st_action_dim_idx = st_action_dim_idx + action_dim + cfg['grippers'][robot_id]['action_dim']
+        
 
     # ========================== Action Class Initialization =================================
     ### robot -> gripper, right_hand -> left_hand

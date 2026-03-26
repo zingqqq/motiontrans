@@ -210,6 +210,7 @@ def conversion_single_trajectory(
     svo_camera.set_reading_parameters(image=True, depth=svo_depth, pointcloud=svo_pointcloud, concatenate_images=False)
     frame_count = svo_camera.get_frame_count()
     width, height = svo_camera.get_frame_resolution()
+    print("video width height:", width, height)
 
     camera_info = svo_camera.get_camera_information()
     # print(f"Camera Information: {(width, height)}, {out_resolutions_resize}, {out_resolutions_crop}, {out_resolutions_image_final}")
@@ -256,6 +257,7 @@ def conversion_single_trajectory(
         episode[episode_key] = episode[episode_key][:episode_length]
 
     global_idx = 0
+    camera_rgb_frames = [None] * episode_length
         
     for t in range(frame_count):
         # print(f"{t}: {next_global_idx}")
@@ -286,6 +288,7 @@ def conversion_single_trajectory(
                     if value.shape[-1] == 4:
                         value = value[..., :3]
                     value = transform(value)
+                    camera_rgb_frames[global_idx] = value.copy()
                     if 'rgb' in key:
                         value = cv2.resize(value, out_resolutions_image_final, interpolation=cv2.INTER_LINEAR)
                     if 'pointcloud' in key:
@@ -383,7 +386,144 @@ def conversion_single_trajectory(
         episode['action'] = np.concatenate([
             episode['action'], episode['robot1_eef_pos'], episode['robot1_eef_rot_axis_angle'], episode['gripper1_gripper_pose'],
         ], axis=-1)
-    
+
+    ## --------------  XRHand Full Debug Visualization ----------------##
+    def to_camera_plane(p_cam_h, K):
+        x_cam, y_cam, z_cam = p_cam_h
+        if z_cam <= 1e-6:
+            return np.array([-1, -1])
+        u = K[0, 0] * (x_cam / z_cam) + K[0, 2]
+        v = K[1, 1] * (y_cam / z_cam) + K[1, 2]
+        return np.array([u, v])
+
+
+    def draw_axis(frame, T_joint, K, length=0.02):
+        origin = T_joint[:3, 3]
+        Rm = T_joint[:3, :3]
+
+        axes = np.eye(3) * length
+        colors = [(255,0,0),(0,255,0),(0,0,255)]  # x,y,z
+
+        uv_origin = to_camera_plane(origin, K).astype(int)
+
+        for i in range(3):
+            pt = origin + Rm @ axes[:, i]
+            uv_pt = to_camera_plane(pt, K).astype(int)
+            cv2.line(frame, tuple(uv_origin), tuple(uv_pt), colors[i], 2)
+
+
+    print("========== XRHand FULL VIS ==========")
+
+    # ===== 获取 XRHand joint 名字 =====
+    joint_names = [
+        "wrist",
+        "palm",
+
+        "thumb1", "thumb2", "thumb3", "thumb_tip",
+
+        "index0", "index1", "index2", "index3", "index_tip",
+
+        "middle0", "middle1", "middle2", "middle3", "middle_tip",
+
+        "ring0", "ring1", "ring2", "ring3", "ring_tip",
+
+        "pinky0", "pinky1", "pinky2", "pinky3", "pinky_tip",
+    ]
+
+    print("XRHand joint order:")
+    for idx, name in enumerate(joint_names):
+        print(idx, name)
+
+    skeleton_edges = []
+
+    for i in range(len(joint_names)-1):
+        skeleton_edges.append((i, i+1))
+
+    print("Total joints:", len(joint_names))
+
+    initial_idx = 0
+    initial_frame = camera_rgb_frames[initial_idx].copy()
+    intrinsics_t0 = episode['camera0_left_intrinsic'][initial_idx]
+    T = len(episode['camera0_left_intrinsic'])
+
+    video_frames = []
+
+    DEBUG_SINGLE_FRAME = False   # 如果想只调试一帧改为 True
+    DRAW_AXIS = False            # 是否画局部坐标轴
+
+    for t in range(T):
+
+        intrinsics_t = episode['camera0_left_intrinsic'][t]
+        frame = camera_rgb_frames[t].copy()
+
+        for hand, color in [("left", (0, 0, 255)), ("right", (255, 0, 0))]:
+
+            hand_mat = episode_org[f"{hand}_hand_mat"]
+            joint_uvs = []
+
+            for j in range(b_hand_joint):
+
+                pose_euler = hand_mat[t, j*6:(j+1)*6][None, :]
+                T_joint_vr = (euler_pose_to_mat(pose_euler) @ yfxrzu2standard)[0]
+
+                T_joint_cam = calib_quest2camera @ fast_mat_inv(episode_org['head_pose_mat'][t]) @ T_joint_vr
+                xyz = T_joint_cam[:3, 3]
+
+                uv = to_camera_plane(xyz, intrinsics_t).astype(int)
+                joint_uvs.append(uv)
+
+                # 画点
+                cv2.circle(frame, tuple(uv), 4, color, -1)
+
+                # joint index
+                cv2.putText(frame,
+                            f"{j}",
+                            tuple(uv),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.35,
+                            (0,255,255),
+                            1)
+
+                # joint name
+                if j < len(joint_names):
+                    cv2.putText(frame,
+                                joint_names[j],
+                                (uv[0], uv[1] + 10),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.3,
+                                (0,0,0),
+                                1)
+
+                # 局部坐标轴
+                if DRAW_AXIS:
+                    draw_axis(frame, T_joint_cam, intrinsics_t)
+
+            # ===== 画骨架连接 =====
+            for (a, b) in skeleton_edges:
+                if a < len(joint_uvs) and b < len(joint_uvs):
+                    cv2.line(frame,
+                            tuple(joint_uvs[a]),
+                            tuple(joint_uvs[b]),
+                            (0,255,0),
+                            1)
+
+        video_frames.append(frame)
+
+        if DEBUG_SINGLE_FRAME:
+            cv2.imshow("XRHand Debug", frame)
+            cv2.waitKey(0)
+            break
+
+    # ===== 保存结果 =====
+    vis_dir = os.path.join("/data/zeqingwang/visualizations", save_dir)
+    os.makedirs(vis_dir, exist_ok=True)
+
+    video_path = os.path.join(vis_dir, "xrhand_full_debug.mp4")
+    imageio.mimsave(video_path, video_frames, fps=25, macro_block_size=1)
+
+    print(f"[OK] XRHand debug video saved to: {video_path}")
+
+    ## --------------------------------------------------------------- ##
     # # save episode['camera0_rgb_right'] as test.mp4
     # if 'camera0_rgb_right' in episode.keys():
     #     rgb_right = episode['camera0_rgb_right']

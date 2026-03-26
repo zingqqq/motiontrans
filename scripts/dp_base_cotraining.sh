@@ -1,10 +1,10 @@
 # bash scripts/dp_base_cotraining.sh
 
-dataset_path="data/zarr_data/zarr_data_robot"          # the folder containing all robot tasks zarr files
-human_dataset_path="data/zarr_data/zarr_data_human"    # the folder containing all human tasks zarr files
+dataset_path="/data/zeqingwang/motiontrans_dataset/zarr_data/zarr_data_robot"          # the folder containing all robot tasks zarr files
+human_dataset_path="/data/zeqingwang/motiontrans_dataset/zarr_data/zarr_data_human"    # the folder containing all human tasks zarr files
 
 alpha=0.5                                              # weight coefficient set as 0.5 by default, details in https://arxiv.org/abs/2503.22634
-gpu_id=0,1,2,3,4,5,6,7                                 # the gpu id to use
+gpu_id=1,2,3,4                                 # the gpu id to use
 info="dp_base"
 
 use_low_dim_encoder=True
@@ -13,8 +13,8 @@ logging_time=$(date "+%m-%d-%H.%M.%S")
 now_seconds="${logging_time: -8}"
 now_date=$(date "+%Y.%m.%d")
 run_dir="checkpoints"
-num_epochs=300
-checkpoint_every=100
+num_epochs=30
+checkpoint_every=10
 batch_size=128
 obs_down_sample_steps=2
 low_dim_obs_horizon=2
@@ -31,6 +31,7 @@ echo ${alpha}
 export HYDRA_FULL_ERROR=1 
 export CUDA_VISIBLE_DEVICES=${gpu_id}
 # export WANDB_BASE_URL=https://api.bandw.top
+
 
 
 # WANDB_DISABLED=True python dp_train.py \

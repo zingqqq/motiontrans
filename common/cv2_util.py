@@ -155,29 +155,60 @@ def get_image_transform_resize_crop(
     return transform
 
 
-def intrinsic_transform_resize(intrinsic, input_res, output_resize_res, output_crop_res):
+# def intrinsic_transform_resize(intrinsic, input_res, output_resize_res, output_crop_res):
 
-    iw, ih = input_res
-    ow, oh = output_resize_res
-    rw, rh = None, None
-    if (iw/ih) >= (ow/oh):
-        # input is wider
-        rh = oh
-        rw = math.ceil(rh / ih * iw)
-    else:
-        rw = ow
-        rh = math.ceil(rw / iw * ih)
+#     iw, ih = input_res
+#     ow, oh = output_resize_res
+#     rw, rh = None, None
+#     if (iw/ih) >= (ow/oh):
+#         # input is wider
+#         rh = oh
+#         rw = math.ceil(rh / ih * iw)
+#     else:
+#         rw = ow
+#         rh = math.ceil(rw / iw * ih)
     
-    intrinsic[0] = intrinsic[0] * rw / ow 
-    intrinsic[1] = intrinsic[1] * rh / oh
+#     intrinsic[0] = intrinsic[0] * rw / ow 
+#     intrinsic[1] = intrinsic[1] * rh / oh
 
-    cw, ch = output_crop_res
-    intrinsic[0, 2] = intrinsic[0, 2] - (rw - cw) / 2
-    intrinsic[1, 2] = intrinsic[1, 2] - (rh - ch) / 2
+#     cw, ch = output_crop_res
+#     intrinsic[0, 2] = intrinsic[0, 2] - (rw - cw) / 2
+#     intrinsic[1, 2] = intrinsic[1, 2] - (rh - ch) / 2
 
-    return intrinsic
+#     return intrinsic
 
+def intrinsic_transform_resize(intrinsic, input_res,
+                               output_resize_res,
+                               output_crop_res):
 
+    w_in, h_in = input_res
+    w_resize, h_resize = output_resize_res
+    w_crop, h_crop = output_crop_res
+
+    if (w_in / h_in) >= (w_resize / h_resize):
+        h_mid = h_resize
+        w_mid = int(math.ceil(h_mid / h_in * w_in))
+    else:
+        w_mid = w_resize
+        h_mid = int(math.ceil(w_mid / w_in * h_in))
+
+    scale_x = w_mid / w_in
+    scale_y = h_mid / h_in
+
+    K = intrinsic.copy()
+
+    K[0, 0] *= scale_x  # fx
+    K[1, 1] *= scale_y  # fy
+    K[0, 2] *= scale_x  # cx
+    K[1, 2] *= scale_y  # cy
+
+    crop_x = (w_mid - w_crop) / 2
+    crop_y = (h_mid - h_crop) / 2
+
+    K[0, 2] -= crop_x
+    K[1, 2] -= crop_y
+
+    return K
 
 def get_image_transform_param(
         input_res: Tuple[int,int]=(1280,720), 
