@@ -26,6 +26,8 @@ from common.svo_utils import SVOReader
 from common.interpolation_util import PoseInterpolator, get_interp1d
 from real.teleop.teleop_utils import pose_to_mat, mat_to_pose
 
+from glob import glob 
+
 
 def get_eef_pos_velocity(eef_pos_seq):
     delta = np.linalg.norm(eef_pos_seq[1:] - eef_pos_seq[:-1], axis=-1)
@@ -530,8 +532,10 @@ def main(input_dir, output, hand_to_eef_file,
                     print("Use All Sources.")
                     break
         else:
-            input_data_fp_list = os.listdir(input_dir)
-            input_data_fp_list.sort()
+            # input_data_fp_list = os.listdir(input_dir)
+            input_data_fp_list = glob(os.path.join(input_dir, "**", "episode_*"), recursive=True) ###===### ###---##
+            input_data_fp_list.sort(key=lambda x:int(x.split("_")[-1]))
+
             input_data_fp_list = [(os.path.join(input_dir, fp), "default", 0) for fp in input_data_fp_list] 
 
         if n_encoding_threads > 1:

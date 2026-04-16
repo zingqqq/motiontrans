@@ -1,4 +1,5 @@
 # isaac gym库存在问题，一定要先import pinocchio再import isaacgym
+from __future__ import annotations
 
 try:
     import pinocchio
