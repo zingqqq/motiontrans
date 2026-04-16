@@ -383,6 +383,31 @@ def conversion_single_trajectory(
         # store camera real timestamp (use timestamps array from pose_data.yaml)
         episode['camera0_real_timestamp'][i] = timestamps[i]
 
+    # ========================== Remove Idle Frames (Stage 1) =================================
+    # Remove leading frames where neither robot0_eef_pos nor robot1_eef_pos has moved from
+    # its initial position. All episode arrays are fully populated here, so trimming is uniform.
+    start_time_idx = 0
+    eps = 0.005
+    for i in range(1, len(episode['robot0_eef_pos'])):
+        moved0 = np.linalg.norm(episode['robot0_eef_pos'][i] - episode['robot0_eef_pos'][0]) > eps
+        moved1 = np.linalg.norm(episode['robot1_eef_pos'][i] - episode['robot1_eef_pos'][0]) > eps
+        if moved0 or moved1:
+            start_time_idx = i
+            break
+    for key in list(episode.keys()):
+        episode[key] = episode[key][start_time_idx:]
+    print(f"Stage 1 idle removal: trimmed {start_time_idx} leading frames (eps={eps})")
+
+    # ========================== Remove Initialization Stage Data (Stage 2) =================================
+    # Remove leading frames where the action vector is entirely zero (controller not yet active).
+    t_init = 0
+    while t_init < len(episode['action']) and (episode['action'][t_init] == 0.).all():
+        t_init += 1
+    if t_init > 0:
+        for key in list(episode.keys()):
+            episode[key] = episode[key][t_init:]
+    print(f"Stage 2 idle removal: trimmed {t_init} leading zero-action frames")
+
     # Module D: final trim / sanity
     n_length = min(episode['timestamp'].shape[0], episode['camera0_real_timestamp'].shape[0])
     for k in list(episode.keys()):
