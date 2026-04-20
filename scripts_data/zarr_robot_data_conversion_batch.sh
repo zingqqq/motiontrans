@@ -14,7 +14,7 @@ points_max_distance_final=1.0   # if save pointclouds, the max distance to keep 
 
 export CUDA_VISIBLE_DEVICES=0
 
-python -m scripts_data.entry.zarr_robot_data_conversion_batch_zeqing \
+python -m scripts_data.entry.zarr_robot_data_conversion_batch_zeqing_wrist \
     --input_dir ${input_dir} \
     --output ${output_dir} \
     --hand_to_eef_file ${hand_to_eef_file} \
@@ -26,3 +26,4 @@ python -m scripts_data.entry.zarr_robot_data_conversion_batch_zeqing \
     --num_points_final ${num_points_final} \
     --points_max_distance_final ${points_max_distance_final} \
     --n_encoding_threads ${n_encoding_threads} \
+    --wrist_cameras wrist_right_plus,wrist_left_plus \
