@@ -5,7 +5,7 @@ input_dir="/home/ubuntu/Desktop/video_benchmarking_project/data/LBM_sim_egocentr
 num_use_source=-1               # how many episodes to use for this task, -1 means all
 # output_dir="/data/zeqingwang/vis_test/zarr_data/zarr_data_robot"        #"/data/zeqingwang/motiontrans_dataset/zarr_data/zarr_data_robot"
 # output_dir="/home/ubuntu/Desktop/video_benchmarking_project/data/zarr_data/zarr_data_robot"
-output_dir="/home/ubuntu/Desktop/video_benchmarking_project/data/zarr_data/zarr_data_robot_no_corrupted_episodes_no_idle"
+output_dir="/home/ubuntu/Desktop/video_benchmarking_project/data/zarr_data/zarr_data_robot_no_corrupted_episodes_no_idle_wrist"
 hand_to_eef_file="assets/franka_eef_to_wrist_robot_base.npy"
 mode="o"                        # o: origin, s: stereo, p: pointclouds, a: all
 n_encoding_threads=16           # how many processes to use for data processing
@@ -26,4 +26,12 @@ python -m scripts_data.entry.zarr_robot_data_conversion_batch_zeqing_wrist \
     --num_points_final ${num_points_final} \
     --points_max_distance_final ${points_max_distance_final} \
     --n_encoding_threads ${n_encoding_threads} \
-    --wrist_cameras wrist_right_plus,wrist_left_plus \
+    --wrist_cameras wrist_right_minus,wrist_left_plus \
+    # --wrist_cameras wrist_right_plus,wrist_left_plus \
+
+
+# BimanualPlaceAppleFromBowlOnCuttingBoard
+# 'wrist_right_plus' not found in metadata
+# wrist_left_minus
+# ipdb> camera_names
+# {'wrist_right_minus': '6CD146030AFC', 'wrist_left_plus': '6CD146030B09', 'scene_right_0': '6CD146030E96', 'scene_left_0': '6CD146030E9E'}
