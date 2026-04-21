@@ -34,12 +34,14 @@ from common.interpolation_util import PoseInterpolator, get_interp1d
 from real.teleop.teleop_utils import pose_to_mat, mat_to_pose
 from glob import glob
 
-# Default wrist cameras to include (semantic names, in the order they become camera1…cameraN)
+# Default wrist cameras to include (semantic names, in the order they become camera1…cameraN).
+# Right arm first so camera1/camera2 = right wrist, camera3/camera4 = left wrist,
+# which matches the _WRIST_NAMES ordering in policy_motiontrans.py.
 DEFAULT_WRIST_CAMERAS = [
-    "wrist_left_minus",
-    "wrist_left_plus",
     "wrist_right_minus",
     "wrist_right_plus",
+    "wrist_left_minus",
+    "wrist_left_plus",
 ]
 
 
